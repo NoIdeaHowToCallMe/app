@@ -23,7 +23,10 @@ define('ext.wikia.aRecoveryEngine.recovery.helper', [
 			callback();
 		});
 
+		log(['initEventQueue'], 'debug', logGroup);
+
 		doc.addEventListener('sp.blocking', function () {
+			log(['sp.blocking', 'fired'], 'debug', logGroup);
 			onBlockingEventsQueue.start();
 		});
 	}

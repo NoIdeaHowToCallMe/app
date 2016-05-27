@@ -100,8 +100,10 @@ define('ext.wikia.adEngine.provider.taboola', [
 
 	function fillInSlotByConfig(slot) {
 		if (supportedSlots.regular.indexOf(slot.name) !== -1) {
+			log(['fillInSlotByConfig', slot, 'regular'], 'debug', logGroup);
 			fillInSlot(slot);
 		} else if (supportedSlots.recovery.indexOf(slot.name) !== -1) {
+			log(['fillInSlotByConfig', slot, 'recovery'], 'debug', logGroup);
 			recoveryHelper.addOnBlockingCallback(function () {
 				fillInSlot(slot);
 			});
