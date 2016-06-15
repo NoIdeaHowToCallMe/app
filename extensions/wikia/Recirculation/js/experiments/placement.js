@@ -18,7 +18,6 @@ require([
 	'ext.wikia.recirculation.helpers.cakeRelatedContent',
 	'ext.wikia.recirculation.helpers.curatedContent',
 	'ext.wikia.recirculation.helpers.googleMatch',
-	'ext.wikia.adEngine.taboolaHelper',
 	require.optional('videosmodule.controllers.rail')
 ], function(
 	$,
@@ -39,7 +38,6 @@ require([
 	cakeHelper,
 	curatedHelper,
 	googleMatchHelper,
-	taboolaHelper,
 	videosModule
 ) {
 	var experimentName = 'RECIRCULATION_PLACEMENT',
@@ -61,15 +59,6 @@ require([
 	}
 
 	switch (group) {
-		// Temporary group running during E3
-		case 'E3':
-			helper = fandomHelper({
-				type: 'e3',
-				limit: 5
-			});
-			view = railView();
-			isRail = true;
-			break;
 		case 'LATERAL_FANDOM':
 			helper = lateralHelper();
 			view = railView();
@@ -82,18 +71,19 @@ require([
 			});
 			view = incontentView();
 			break;
-		case 'FANDOM_RAIL':
-			helper = fandomHelper();
-			view = railView();
-			isRail = true;
+		case 'LATERAL_SCROLLER':
+			helper = lateralHelper({
+				type: 'community',
+				count: 12
+			});
+			view = scrollerView();
 			break;
-		case 'FANDOM_INCONTENT':
-			helper = fandomHelper();
-			view = incontentView();
-			break;
-		case 'FANDOM_FOOTER':
-			helper = fandomHelper();
-			view = footerView();
+		case 'LINKS_SCROLLER':
+			helper = contentLinksHelper({
+			    count: 6,
+			    extra: 6
+			});
+			view = scrollerView();
 			break;
 		case 'FANDOM_GENRE':
 			helper = fandomHelper({
@@ -111,33 +101,6 @@ require([
 			view = railView();
 			isRail = true;
 			break;
-		case 'LINKS_RAIL':
-			helper = contentLinksHelper();
-			view = railView();
-			isRail = true;
-			break;
-		case 'LINKS_INCONTENT':
-			helper = contentLinksHelper();
-			view = incontentView();
-			break;
-		case 'LINKS_FOOTER':
-			helper = contentLinksHelper();
-			view = footerView();
-			break;
-		case 'LINKS_SCROLLER':
-			helper = contentLinksHelper({
-			    count: 6,
-			    extra: 6
-			});
-			view = scrollerView();
-			break;
-		case 'LATERAL_SCROLLER':
-			helper = lateralHelper({
-				type: 'community',
-				count: 12
-			});
-			view = scrollerView();
-			break;
 		case 'CONTROL':
 			helper = fandomHelper({
 				limit: 5
@@ -147,9 +110,6 @@ require([
 			break;
 		case 'GOOGLE_INCONTENT':
 			renderGoogleIncontent();
-			return;
-		case 'TABOOLA':
-			renderTaboola();
 			return;
 		case 'LATERAL_BOTH':
 			renderBothLateralExperiments();
@@ -167,19 +127,9 @@ require([
 	}
 
 	if (isRail) {
-		afterRailLoads(runRailExperiment);
+		utils.afterRailLoads(runRailExperiment);
 	} else {
 		runExperiment();
-	}
-
-	function afterRailLoads(callback) {
-		var $rail = $('#WikiaRail');
-
-		if ($rail.find('.loading').exists()) {
-			$rail.one('afterLoad.rail', callback);
-		} else {
-			callback();
-		}
 	}
 
 	function runExperiment() {
@@ -212,7 +162,7 @@ require([
 		}
 
 		errorHandled = true;
-		afterRailLoads(function() {
+		utils.afterRailLoads(function() {
 			var rail = railView();
 
 			fandomHelper({
@@ -226,13 +176,6 @@ require([
 					}
 				});
 		});
-	}
-
-	function injectSubtitle($html) {
-		var subtitle = $('<h2>').text($.msg('recirculation-fandom-subtitle'));
-
-		$html.find('.trending').after(subtitle);
-		return $html;
 	}
 
 	function renderBothLateralExperiments() {
@@ -251,7 +194,7 @@ require([
 				}
 			});
 
-		afterRailLoads(function() {
+		utils.afterRailLoads(function() {
 			var rail = railView();
 
 			lateralHelper({
@@ -265,31 +208,7 @@ require([
 	}
 
 	function renderGoogleIncontent() {
-		var section = incontentView().findSuitableSection();
 
-		if (section.exists()) {
-			googleMatchHelper.injectGoogleMatchedContent(section);
-			tracker.trackVerboseImpression(experimentName, 'in-content');
-		}
-	}
-
-	function renderTaboola() {
-		afterRailLoads(function() {
-			taboolaHelper.initializeWidget({
-				mode: 'thumbnails-rr2',
-				container: railContainerId,
-				placement: 'Right Rail Thumbnails 3rd',
-				target_type: 'mix'
-			});
-
-			tracker.trackVerboseImpression(experimentName, 'rail');
-			$(railSelector).on('mousedown', 'a', function() {
-				var slot = $(element).parent().index() + 1,
-					label = 'rail=slot-' + slot;
-
-				tracker.trackVerboseClick(experimentName, label);
-			});
-		});
 	}
 
 	function renderImpactFooter() {
@@ -315,7 +234,7 @@ require([
 				fView.render(data)
 					.then(fView.setupTracking(experimentName));
 
-				afterRailLoads(function() {
+				utils.afterRailLoads(function() {
 					curated.injectContent(fandomData)
 						.then(rView.render)
 						.then(rView.setupTracking)
