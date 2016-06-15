@@ -97,6 +97,8 @@ class WallHooksHelper {
 				} else {
 					$wallMessage = WallMessage::newFromTitle( $mainTitle );
 					$app->wg->SuppressPageHeader = true;
+					$app->wg->Out->setStatusCode( 404 );
+
 					if ( $wallMessage->isVisible( $app->wg->User ) ||
 							( $wallMessage->canViewDeletedMessage( $app->wg->User ) && $app->wg->Request->getVal( 'show' ) == '1' )
 					) {
