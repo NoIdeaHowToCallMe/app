@@ -1,245 +1,103 @@
 /*global require*/
+
 require([
-	'jquery',
 	'wikia.window',
 	'wikia.abTest',
 	'wikia.log',
-	'ext.wikia.recirculation.tracker',
-	'ext.wikia.recirculation.utils',
-	'ext.wikia.recirculation.views.incontent',
-	'ext.wikia.recirculation.views.rail',
-	'ext.wikia.recirculation.views.footer',
-	'ext.wikia.recirculation.views.scroller',
-	'ext.wikia.recirculation.views.impactFooter',
-	'ext.wikia.recirculation.helpers.contentLinks',
-	'ext.wikia.recirculation.helpers.fandom',
-	'ext.wikia.recirculation.helpers.lateral',
-	'ext.wikia.recirculation.helpers.data',
-	'ext.wikia.recirculation.helpers.cakeRelatedContent',
-	'ext.wikia.recirculation.helpers.curatedContent',
-	'ext.wikia.recirculation.helpers.googleMatch',
+	'ext.wikia.recirculation.experiments.placement.control',
+	'ext.wikia.recirculation.experiments.placement.cakeRelatedContent',
+	'ext.wikia.recirculation.experiments.placement.fandomGenre',
+	'ext.wikia.recirculation.experiments.placement.fandomTopic',
+	'ext.wikia.recirculation.experiments.placement.googleIncontent',
+	'ext.wikia.recirculation.experiments.placement.impactFooter',
+	'ext.wikia.recirculation.experiments.placement.lateralBoth',
+	'ext.wikia.recirculation.experiments.placement.lateralCommunity',
+	'ext.wikia.recirculation.experiments.placement.lateralFandom',
+	'ext.wikia.recirculation.experiments.placement.lateralScroller',
+	'ext.wikia.recirculation.experiments.placement.linksScroller',
 	require.optional('videosmodule.controllers.rail')
 ], function(
-	$,
 	w,
 	abTest,
 	log,
-	tracker,
-	utils,
-	incontentView,
-	railView,
-	footerView,
-	scrollerView,
-	impactFooterView,
-	contentLinksHelper,
-	fandomHelper,
-	lateralHelper,
-	dataHelper,
-	cakeHelper,
-	curatedHelper,
-	googleMatchHelper,
-	videosModule
+	Control,
+	CakeRelatedContent,
+	FandomGenre,
+	FandomTopic,
+	GoogleIncontent,
+	ImpactFooter,
+	LateralBoth,
+	LateralCommunity,
+	LateralFandom,
+	LateralScroller,
+	LinksScroller,
+	VideosModule
 ) {
 	var experimentName = 'RECIRCULATION_PLACEMENT',
 		logGroup = 'ext.wikia.recirculation.experiments.placement',
-		railContainerId = 'RECIRCULATION_RAIL',
-		railSelector = '#' + railContainerId,
+		railSelector = '#RECIRCULATION_RAIL',
 		group = abTest.getGroup(experimentName),
 		isRail = false,
 		errorHandled = false,
-		footerView,
-		view,
-		helper;
+		experiment;
 
 	if (w.wgContentLanguage !== 'en') {
-		if (videosModule) {
-			videosModule(railSelector);
+		if (VideosModule) {
+			VideosModule(railSelector);
 		}
 		return;
 	}
 
 	switch (group) {
+		case 'LATERAL_BOTH':
+			experiment = LateralBoth;
+			return;
 		case 'LATERAL_FANDOM':
-			helper = lateralHelper();
-			view = railView();
-			isRail = true;
+			experiment = LateralFandom;
 			break;
 		case 'LATERAL_COMMUNITY':
-			helper = lateralHelper({
-				type: 'community',
-				count: 3
-			});
-			view = incontentView();
+			experiment = LateralCommunity;
 			break;
 		case 'LATERAL_SCROLLER':
-			helper = lateralHelper({
-				type: 'community',
-				count: 12
-			});
-			view = scrollerView();
+			experiment = LateralScroller;
 			break;
 		case 'LINKS_SCROLLER':
-			helper = contentLinksHelper({
-			    count: 6,
-			    extra: 6
-			});
-			view = scrollerView();
+			experiment = LinksScroller;
 			break;
 		case 'FANDOM_GENRE':
-			helper = fandomHelper({
-				type: 'vertical',
-				limit: 5
-			});
-			view = railView();
-			isRail = true;
+			experiment = FandomGenre;
 			break;
 		case 'FANDOM_TOPIC':
-			helper = fandomHelper({
-				type: 'community',
-				limit: 5
-			});
-			view = railView();
-			isRail = true;
+			experiment = FandomTopic;
 			break;
 		case 'CONTROL':
-			helper = fandomHelper({
-				limit: 5
-			});
-			view = railView();
-			isRail = true;
+			experiment = Control;
 			break;
 		case 'GOOGLE_INCONTENT':
-			renderGoogleIncontent();
-			return;
-		case 'LATERAL_BOTH':
-			renderBothLateralExperiments();
+			experiment = GoogleIncontent;
 			return;
 		case 'CAKE_RELATED_CONTENT':
-			helper = cakeHelper();
-			view = railView();
-			isRail = true;
+			experiment = CakeRelatedContent;
 			break;
 		case 'IMPACT_FOOTER':
-			renderImpactFooter();
+			experiment = ImpactFooter;
 			return;
 		default:
 			return;
 	}
 
-	if (isRail) {
-		utils.afterRailLoads(runRailExperiment);
-	} else {
-		runExperiment();
-	}
+	experiment.run(experimentName)
+		.fail(function(err) {
+			if (err) {
+				log(err, 'info', logGroup);
+			}
 
-	function runExperiment() {
-		helper.loadData()
-			.then(view.render)
-			.then(view.setupTracking(experimentName))
-			.fail(handleError);
-	}
+			// If there is an error somewhere we render the control group with no tracking
+			if (errorHandled) {
+				return;
+			}
 
-	function runRailExperiment() {
-		var curated = curatedHelper();
-		helper.loadData()
-			.then(curated.injectContent)
-			.then(view.render)
-			.then(function($html) {
-				view.setupTracking(experimentName)($html);
-				curated.setupTracking($html);
-			})
-			.fail(handleError);
-	}
-
-	function handleError(err) {
-		if (err) {
-			log(err, 'info', logGroup);
-		}
-
-		// If there is an error somewhere we render the control group with no tracking
-		if (errorHandled) {
-			return;
-		}
-
-		errorHandled = true;
-		utils.afterRailLoads(function() {
-			var rail = railView();
-
-			fandomHelper({
-				limit: 5
-			}).loadData()
-				.then(rail.render)
-				.fail(function(err) {
-					// If this doesn't work, log out why. We tried our best.
-					if (err) {
-						log(err, 'info', logGroup);
-					}
-				});
+			errorHandled = true;
+			Control.run();
 		});
-	}
-
-	function renderBothLateralExperiments() {
-		var incontent = incontentView();
-
-		lateralHelper({
-			type: 'community',
-			count: 3
-		}).loadData()
-			.then(incontent.render)
-			.then(incontent.setupTracking(experimentName))
-			.fail(function(err) {
-				// We fail silently for the in-content widget
-				if (err) {
-					log(err, 'info', logGroup);
-				}
-			});
-
-		utils.afterRailLoads(function() {
-			var rail = railView();
-
-			lateralHelper({
-				type: 'fandom',
-				count: 5
-			}).loadData()
-				.then(rail.render)
-				.then(rail.setupTracking(experimentName))
-				.fail(handleError);
-		});
-	}
-
-	function renderGoogleIncontent() {
-
-	}
-
-	function renderImpactFooter() {
-		var curated = curatedHelper(),
-			fView = impactFooterView(),
-			rView = railView(),
-			sView = scrollerView();
-
-		contentLinksHelper({
-			count: 6,
-			extra: 6
-		}).loadData()
-			.then(sView.render)
-			.then(sView.setupTracking(experimentName));
-
-		dataHelper({}).loadData()
-			.then(function(data) {
-				var fandomData = {
-					title: data.fandom.title,
-					items: data.fandom.items.splice(0,5)
-				};
-
-				fView.render(data)
-					.then(fView.setupTracking(experimentName));
-
-				utils.afterRailLoads(function() {
-					curated.injectContent(fandomData)
-						.then(rView.render)
-						.then(rView.setupTracking)
-						.then(curatedHelper.setupTracking);
-				});
-			});
-	}
 });
