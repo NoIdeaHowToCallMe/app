@@ -26,8 +26,8 @@ class NodeDataSanitizerTest extends WikiaBaseTest {
 		return [
 			[
 				[
-					'label' => 'Data <a>Link</a>',
-					'value' => 'Data <a>Value</a>' ],
+					'label' => '<a>Link</a><br /><a>Link2</a><br />Link3',
+					'value' => '<a>Value</a><br /><a>Value2</a><br />Value 3' /],
 				[
 					'label' => 'Data <a>Link</a>',
 					'value' => 'Data <a>Value</a>'
@@ -39,11 +39,11 @@ class NodeDataSanitizerTest extends WikiaBaseTest {
 			],
 			[
 				[
-					'label' => 'Data <div class="some class">with <h2>div </h2>with <small>class</small></div> and other tags',
+					'label' => 'Data <div class="some class">with <h2>div </h2>with <small>class</small></div> and other tags<br />and <i>more</i> tags' ,
 					'value' => 'Data <small>Value</small>'
 				],
 				[
-					'label' => 'Data with div with class and other tags',
+					'label' => 'Data with div with class and other tags <br />and more tags',
 					'value' => 'Data <small>Value</small>'
 				]
 			],
